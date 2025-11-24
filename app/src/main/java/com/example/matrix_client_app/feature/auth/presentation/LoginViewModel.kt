@@ -80,7 +80,7 @@ class LoginViewModel @Inject constructor(
 
             // Step 3: Call repository
             val result = authRepository.login(
-                homeserverUrl = currentState.homeserverUrl,
+                homeserverUrl = cleanHomeserverUrl(currentState.homeserverUrl),
                 username = currentState.username,
                 password = currentState.password
             )
@@ -134,6 +134,12 @@ class LoginViewModel @Inject constructor(
 
             else -> null // All valid!
         }
+    }
+
+    private fun cleanHomeserverUrl(url: String): String {
+        return url.trim()           // Remove spaces
+            .removeSuffix("/")      // Remove trailing slash
+            .removeSuffix("/")      // Remove double slash
     }
 }
 
