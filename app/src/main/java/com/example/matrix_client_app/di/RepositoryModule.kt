@@ -1,7 +1,9 @@
 package com.example.matrix_client_app.di
 
 import com.example.matrix_client_app.feature.auth.data.repository.AuthRepositoryImpl
+import com.example.matrix_client_app.feature.rooms.data.repository.RoomRepositoryImpl
 import com.example.matrix_client_app.feature.auth.domain.repository.AuthRepository
+import com.example.matrix_client_app.feature.rooms.domain.repository.RoomRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -17,6 +19,12 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRoomRepository(
+        roomRepositoryImpl: RoomRepositoryImpl
+    ): RoomRepository
 
     // Future bindings will go here:
     // @Binds abstract fun bindRoomRepository(impl: RoomRepositoryImpl): RoomRepository

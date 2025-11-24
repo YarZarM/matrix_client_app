@@ -6,9 +6,9 @@ data class LoginState(
 
     val homeserverUrl: String = Constants.DEFAULT_HOMESERVER,
 
-    val username: String = "",
+    val username: String = Constants.USERNAME,
 
-    val password: String = "",
+    val password: String = Constants.PASSWORD,
 
     val isLoading: Boolean = false,
 
