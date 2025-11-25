@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.matrix_client_app.feature.auth.presentation.LoginScreen
+import com.example.matrix_client_app.feature.messages.presentation.MessageListScreen
 import com.example.matrix_client_app.feature.rooms.presentation.RoomListScreen
 
 sealed class Screen(val route: String) {
@@ -37,7 +38,7 @@ fun NavGraph(
         composable(Screen.MessageList.route) { backStackEntry ->
             // MessageListScreen will be added here
              val roomId = backStackEntry.arguments?.getString("roomId")
-            // feature.messages.presentation.MessageListScreen(navController = navController, roomId = roomId)
+            MessageListScreen(navController = navController)
         }
     }
 }

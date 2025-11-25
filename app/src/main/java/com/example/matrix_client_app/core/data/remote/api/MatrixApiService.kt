@@ -3,6 +3,7 @@ package com.example.matrix_client_app.core.data.remote.api
 import com.example.matrix_client_app.feature.rooms.data.model.JoinRoomResponse
 import com.example.matrix_client_app.feature.auth.data.model.LoginRequest
 import com.example.matrix_client_app.feature.auth.data.model.LoginResponse
+import com.example.matrix_client_app.feature.messages.data.model.MessageResponse
 import com.example.matrix_client_app.feature.rooms.data.model.JoinRoomRequest
 //import com.example.matrix_client_app.feature.rooms.data.model.PublicRoomRequest
 import com.example.matrix_client_app.feature.rooms.data.model.PublicRoomsResponse
@@ -40,9 +41,13 @@ interface MatrixApiService {
         @Header("Authorization") authorization: String,
     ): JoinRoomResponse
 
-    // TODO: Add more endpoints as needed
-    // - getPublicRooms()
-    // - joinRoom()
-    // - getRoomMessages()
-    // - sendMessage()
+    @GET
+    suspend fun getMessageList(
+        @Url baseUrl: String,
+        @Header("Authorization") authorization: String,
+        @Query("from") from: String? = null,
+        @Query("dir") dir: String = "b",
+        @Query("limit") limit: Int? = null
+    ): MessageResponse
+
 }

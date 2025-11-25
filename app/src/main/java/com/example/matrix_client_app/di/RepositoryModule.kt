@@ -3,6 +3,8 @@ package com.example.matrix_client_app.di
 import com.example.matrix_client_app.feature.auth.data.repository.AuthRepositoryImpl
 import com.example.matrix_client_app.feature.rooms.data.repository.RoomRepositoryImpl
 import com.example.matrix_client_app.feature.auth.domain.repository.AuthRepository
+import com.example.matrix_client_app.feature.messages.data.repository.MessageRepositoryImpl
+import com.example.matrix_client_app.feature.messages.domain.MessageRepository
 import com.example.matrix_client_app.feature.rooms.domain.repository.RoomRepository
 import dagger.Binds
 import dagger.Module
@@ -26,7 +28,10 @@ abstract class RepositoryModule {
         roomRepositoryImpl: RoomRepositoryImpl
     ): RoomRepository
 
-    // Future bindings will go here:
-    // @Binds abstract fun bindRoomRepository(impl: RoomRepositoryImpl): RoomRepository
-    // @Binds abstract fun bindMessageRepository(impl: MessageRepositoryImpl): MessageRepository
+    @Binds
+    @Singleton
+    abstract fun bindMessageRepository(
+        messageRepositoryImpl: MessageRepositoryImpl
+    ): MessageRepository
+
 }

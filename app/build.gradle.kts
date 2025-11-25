@@ -90,6 +90,8 @@ dependencies {
     implementation("androidx.compose.material3.adaptive:adaptive")
     implementation ("androidx.compose.material:material-icons-extended")
 
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
