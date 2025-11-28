@@ -54,28 +54,18 @@ fun LoginScreen(
     navController: NavController,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
-    // Collect state from ViewModel
-    // collectAsState() converts Flow to Compose State
-    // UI recomposes when state changes
     val state by viewModel.state.collectAsState()
 
-    // Focus manager for keyboard navigation
     val focusManager = LocalFocusManager.current
 
-    // Password visibility toggle
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // Collect navigation events
-    // LaunchedEffect runs when composition starts
-    // Survives recomposition but not configuration changes
     LaunchedEffect(key1 = Unit) {
         viewModel.navigationEvents.collect { event ->
             when (event) {
                 is LoginNavigationEvent.NavigateToRoomList -> {
                     Timber.d("Navigating to room list")
                     navController.navigate("room_list") {
-                        // Pop login screen from back stack
-                        // User can't go back to login after successful login
                         popUpTo("login") { inclusive = true }
                     }
                 }
@@ -83,7 +73,6 @@ fun LoginScreen(
         }
     }
 
-    // Scaffold provides Material 3 layout structure
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,7 +80,6 @@ fun LoginScreen(
             )
         }
     ) { paddingValues ->
-        // Main content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -100,7 +88,6 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App logo/title
             Text(
                 text = "Matrix Client",
                 style = MaterialTheme.typography.headlineLarge,
@@ -109,7 +96,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Homeserver URL field
             OutlinedTextField(
                 value = state.homeserverUrl,
                 onValueChange = {
@@ -131,7 +117,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Username field
             OutlinedTextField(
                 value = state.username,
                 onValueChange = {
@@ -153,7 +138,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password field
             OutlinedTextField(
                 value = state.password,
                 onValueChange = {
@@ -201,7 +185,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login button
             Button(
                 onClick = { viewModel.onEvent(LoginEvent.Login) },
                 modifier = Modifier.fillMaxWidth(),
@@ -217,7 +200,6 @@ fun LoginScreen(
                 Text(if (state.isLoading) "Logging in..." else "Login")
             }
 
-            // Error message
             state.error?.let { error ->
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(

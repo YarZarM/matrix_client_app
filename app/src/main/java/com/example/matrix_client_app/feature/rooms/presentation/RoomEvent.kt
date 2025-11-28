@@ -11,4 +11,6 @@ sealed class RoomEvent {
     data class OpenRoom(val roomId: String) : RoomEvent()
 
     object DismissError : RoomEvent()
+
+    object Logout: RoomEvent()
 }

@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -27,15 +30,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.matrix_client_app.feature.rooms.data.model.PublicRoom
 import com.example.matrix_client_app.navigation.Screen
@@ -48,12 +53,21 @@ fun RoomListScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Handle navigation events
     LaunchedEffect(Unit) {
         viewModel.navigationEvents.collect { event ->
             when (event) {
                 is RoomListNavigationEvent.NavigateToRoom -> {
-                    navController.navigate(Screen.MessageList.createRoute(event.roomId))
+                    navController.navigate(
+                        Screen.MessageList.createRoute(
+                            roomId = event.roomId,
+                            roomName = event.roomName,
+                        ))
+                }
+
+                is RoomListNavigationEvent.NavigateToLogin -> {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             }
         }
@@ -64,8 +78,15 @@ fun RoomListScreen(
             TopAppBar(
                 title = { Text("Public Rooms") },
                 actions = {
-                    IconButton(onClick = { viewModel.onEvent(RoomEvent.RefreshRooms) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(
+                        onClick = { viewModel.onEvent(RoomEvent.Logout) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Logout,
+                            contentDescription = "Logout",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             )
@@ -77,14 +98,12 @@ fun RoomListScreen(
                 .padding(padding)
         ) {
             when {
-                // Loading state (initial load)
                 state.isLoading && state.rooms.isEmpty() -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
 
-                // Error state
                 state.error != null -> {
                     ErrorMessage(
                         message = state.error!!,
@@ -93,7 +112,6 @@ fun RoomListScreen(
                     )
                 }
 
-                // Empty state
                 state.rooms.isEmpty() -> {
                     Text(
                         text = "No public rooms found",
@@ -102,24 +120,31 @@ fun RoomListScreen(
                     )
                 }
 
-                // Content: List of rooms
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    PullToRefreshBox(
+                        isRefreshing = state.isRefreshing,
+                        onRefresh = {viewModel.onEvent(RoomEvent.RefreshRooms)}
                     ) {
-                        items(state.rooms) { room ->
-                            RoomItem(
-                                room = room,
-                                isJoined = state.joinedRoomIds.contains(room.roomId),
-                                onJoinClick = {
-                                    viewModel.onEvent(RoomEvent.JoinRoom(room.roomId))
-                                },
-                                onRoomClick = {
-                                    viewModel.onEvent(RoomEvent.OpenRoom(room.roomId))
-                                }
-                            )
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(
+                                items = state.rooms,
+                                key = {room -> room.roomId}
+                            ) { room ->
+                                RoomItem(
+                                    room = room,
+                                    isJoined = state.joinedRoomIds.contains(room.roomId),
+                                    onJoinClick = {
+                                        viewModel.onEvent(RoomEvent.JoinRoom(room.roomId))
+                                    },
+                                    onRoomClick = {
+                                        viewModel.onEvent(RoomEvent.OpenRoom(room.roomId))
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -128,9 +153,6 @@ fun RoomListScreen(
     }
 }
 
-/**
- * Single room item in the list
- */
 @Composable
 fun RoomItem(
     room: PublicRoom,
@@ -138,17 +160,23 @@ fun RoomItem(
     onJoinClick: () -> Unit,
     onRoomClick: () -> Unit
 ) {
+    val displayName = remember(room.roomId) {
+        room.getDisplayName()
+    }
+
+    val displayTopic = remember(room.roomId) {
+        room.getDisplayTopic()
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onRoomClick)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Room name
             Text(
-                text = room.getDisplayName(),
+                text = displayName,
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -156,9 +184,8 @@ fun RoomItem(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Room topic
             Text(
-                text = room.getDisplayTopic(),
+                text = displayTopic,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -167,7 +194,6 @@ fun RoomItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Member count and join button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -197,9 +223,6 @@ fun RoomItem(
     }
 }
 
-/**
- * Error message with retry button
- */
 @Composable
 fun ErrorMessage(
     message: String,

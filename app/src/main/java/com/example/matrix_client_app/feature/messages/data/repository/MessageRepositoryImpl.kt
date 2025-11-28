@@ -33,13 +33,21 @@ class MessageRepositoryImpl @Inject constructor(
                 limit = limit
             )
 
-            val messages = response.chunk.reversed()
+            val messages = response.chunk.filter { event ->
+                event.isVisibleEvent()
+            }
 
             DataResult.Success(messages)
 
         } catch (e: HttpException) {
             when (e.code()) {
-                401 -> DataResult.Error("Session expired. Please log in again")
+                401 -> {
+                    tokenManager.clearAll()
+                    DataResult.Error(
+                        message = "Session expired. Please log in again",
+                        isAuthError = true
+                    )
+                }
                 403 -> DataResult.Error("You don't have permission to view this room")
                 404 -> DataResult.Error("Room not found")
                 429 -> DataResult.Error("Too many requests. Try again later")

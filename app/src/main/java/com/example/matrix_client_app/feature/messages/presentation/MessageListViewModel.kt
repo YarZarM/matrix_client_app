@@ -23,11 +23,19 @@ class MessageListViewModel @Inject constructor(
         "roomId is required for MessageListViewModel"
     }
 
-    private val _state = MutableStateFlow(MessageListState(roomId = roomId))
+    private val roomName: String = checkNotNull(savedStateHandle["roomName"]) {
+        "roomName is required for MessageListViewModel"
+    }
+
+    private val _state = MutableStateFlow(
+        MessageListState(
+            roomId = roomId,
+            roomName = roomName,
+        )
+    )
     val state: StateFlow<MessageListState> = _state.asStateFlow()
 
     init {
-        // Load messages when ViewModel is created
         loadMessages()
     }
 
@@ -54,8 +62,6 @@ class MessageListViewModel @Inject constructor(
                     _state.update { it.copy(
                         messages = result.data,
                         isLoading = false,
-                        // Set room name to room ID for now (we'd need another API call to get real name)
-                        roomName = roomId.substringAfter("!").substringBefore(":")
                     )}
                 }
 
@@ -71,12 +77,12 @@ class MessageListViewModel @Inject constructor(
     }
 
     private fun refreshMessages() {
-        viewModelScope.launch {
-            _state.update { it.copy(
-                isRefreshing = true,
-                error = null
-            )}
+        _state.update { it.copy(
+            isRefreshing = true,
+            error = null
+        )}
 
+        viewModelScope.launch {
             Timber.d("Refreshing messages for room: $roomId")
 
             when (val result = messageRepository.getRoomMessages(roomId, limit = 50)) {

@@ -2,9 +2,10 @@ package com.example.matrix_client_app.feature.rooms.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.matrix_client_app.core.data.local.JoinedRoomsManager
+import com.example.matrix_client_app.core.data.local.TokenManager
 import com.example.matrix_client_app.feature.rooms.domain.repository.RoomRepository
 import com.example.matrix_client_app.util.DataResult
-import com.example.matrix_client_app.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,20 +19,32 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RoomViewModel @Inject constructor(
-    private val roomRepository: RoomRepository
+    private val roomRepository: RoomRepository,
+    private val joinedRoomsManager: JoinedRoomsManager,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
-    // UI State
     private val _state = MutableStateFlow(RoomState())
     val state: StateFlow<RoomState> = _state.asStateFlow()
 
-    // Navigation events
     private val _navigationEvents = Channel<RoomListNavigationEvent>()
     val navigationEvents = _navigationEvents.receiveAsFlow()
 
     init {
-        // Load rooms when ViewModel is created
+        loadJoinedRoomsFromStorage()
         loadRooms()
+    }
+
+    private fun loadJoinedRoomsFromStorage() {
+        viewModelScope.launch {
+            Timber.d("Loading joined rooms from storage...")
+            val joinedRoomIds = joinedRoomsManager.getJoinedRoomIds()
+            Timber.d("Found ${joinedRoomIds.size} previously joined rooms")
+
+            _state.update { it.copy(
+                joinedRoomIds = joinedRoomIds
+            )}
+        }
     }
 
     fun onEvent(event: RoomEvent) {
@@ -41,6 +54,7 @@ class RoomViewModel @Inject constructor(
             is RoomEvent.JoinRoom -> joinRoom(event.roomId)
             is RoomEvent.OpenRoom -> openRoom(event.roomId)
             is RoomEvent.DismissError -> dismissError()
+            is RoomEvent.Logout -> logoutRoom()
         }
     }
 
@@ -73,16 +87,13 @@ class RoomViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Refresh rooms (pull to refresh)
-     */
     private fun refreshRooms() {
-        viewModelScope.launch {
-            _state.update { it.copy(
-                isRefreshing = true,
-                error = null
-            )}
+        _state.update { it.copy(
+            isRefreshing = true,
+            error = null
+        )}
 
+        viewModelScope.launch {
             Timber.d("Refreshing rooms...")
 
             when (val result = roomRepository.getPublicRooms(limit = 20)) {
@@ -110,23 +121,26 @@ class RoomViewModel @Inject constructor(
             Timber.d("Joining room: $roomId")
 
             when (val result = roomRepository.joinRoom(roomId)) {
-                is Result.Success -> {
+                is DataResult.Success -> {
                     Timber.d("Successfully joined room: $roomId")
 
-                    // Add to joined rooms set
                     _state.update { currentState ->
                         currentState.copy(
                             joinedRoomIds = currentState.joinedRoomIds + roomId
                         )
                     }
 
-                    // Navigate to the room
+                    joinedRoomsManager.addJoinedRoom(roomId)
+
+                    val room = _state.value.rooms.find { it.roomId == roomId }
+                    val roomName = room?.getDisplayName() ?: roomId
+
                     _navigationEvents.send(
-                        RoomListNavigationEvent.NavigateToRoom(roomId)
+                        RoomListNavigationEvent.NavigateToRoom(roomId = roomId, roomName = roomName)
                     )
                 }
 
-                is Result.Error -> {
+                is DataResult.Error -> {
                     Timber.e("Failed to join room: ${result.message}")
                     _state.update { it.copy(
                         error = result.message
@@ -136,16 +150,15 @@ class RoomViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Open a room (navigate to messages screen)
-     *
-     * @param roomId The room ID to open
-     */
     private fun openRoom(roomId: String) {
         viewModelScope.launch {
             Timber.d("Opening room: $roomId")
+
+            val room = _state.value.rooms.find { it.roomId == roomId }
+            val roomName = room?.getDisplayName() ?: roomId
+
             _navigationEvents.send(
-                RoomListNavigationEvent.NavigateToRoom(roomId)
+                RoomListNavigationEvent.NavigateToRoom(roomId = roomId, roomName = roomName)
             )
         }
     }
@@ -153,8 +166,29 @@ class RoomViewModel @Inject constructor(
     private fun dismissError() {
         _state.update { it.copy(error = null) }
     }
+
+    private fun logoutRoom() {
+        viewModelScope.launch {
+            try {
+                Timber.d("Logging out user...")
+
+                tokenManager.clearAll()
+
+                joinedRoomsManager.clearJoinedRooms()
+
+                Timber.d("Logout successful")
+
+                _navigationEvents.send(RoomListNavigationEvent.NavigateToLogin)
+
+            } catch (e: Exception) {
+                Timber.e(e, "Error during logout")
+                _navigationEvents.send(RoomListNavigationEvent.NavigateToLogin)
+            }
+        }
+    }
 }
 
 sealed class RoomListNavigationEvent {
-    data class NavigateToRoom(val roomId: String) : RoomListNavigationEvent()
+    data class NavigateToRoom(val roomId: String, val roomName: String) : RoomListNavigationEvent()
+    object NavigateToLogin : RoomListNavigationEvent()
 }

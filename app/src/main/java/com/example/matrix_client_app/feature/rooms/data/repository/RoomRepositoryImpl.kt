@@ -5,7 +5,6 @@ import com.example.matrix_client_app.core.data.remote.api.MatrixApiService
 import com.example.matrix_client_app.feature.rooms.domain.repository.RoomRepository
 import com.example.matrix_client_app.feature.rooms.data.model.PublicRoom
 import com.example.matrix_client_app.util.DataResult
-import com.example.matrix_client_app.util.Result
 import okio.IOException
 import retrofit2.HttpException
 import timber.log.Timber
@@ -34,7 +33,7 @@ class RoomRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun joinRoom(roomId: String): Result {
+    override suspend fun joinRoom(roomId: String): DataResult<Unit> {
         return try {
             val accessToken = tokenManager.getAccessToken()
             val homeserverUrl = tokenManager.getHomeserverUrl()
@@ -47,21 +46,19 @@ class RoomRepositoryImpl @Inject constructor(
                 authorization = authHeader
             )
 
-            Result.Success
+            DataResult.Success(Unit)
         } catch (e: HttpException) {
             when (e.code()) {
-                401 -> Result.Error("Session expired. Please log in again")
-                403 -> Result.Error("You are not allowed to join this room")
-                404 -> Result.Error("Room not found")
-                429 -> Result.Error("Too many requests. Try again later")
-                else -> Result.Error("Failed to join room: ${e.message()}")
+                401 -> DataResult.Error("Session expired. Please log in again")
+                403 -> DataResult.Error("You are not allowed to join this room")
+                404 -> DataResult.Error("Room not found")
+                429 -> DataResult.Error("Too many requests. Try again later")
+                else -> DataResult.Error("Failed to join room: ${e.message()}")
             }
         } catch (e: IOException) {
-            // Network error
-            Result.Error("Network error. Check your connection")
+            DataResult.Error("Network error. Check your connection")
         } catch (e: Exception) {
-            // Unexpected error
-            Result.Error("Failed to join room: ${e.message ?: "Unknown error"}")
+            DataResult.Error("Failed to join room: ${e.message ?: "Unknown error"}")
         }
     }
 }

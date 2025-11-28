@@ -61,15 +61,14 @@ data class ClientEvent(
 
                 when (msgtype) {
                     "m.text" -> body ?: "[Empty message]"
-                    "m.image" -> "📷 Image"
-                    "m.file" -> "📎 File"
-                    "m.video" -> "🎥 Video"
-                    "m.audio" -> "🎵 Audio"
+                    "m.image" -> "Image"
+                    "m.file" -> "File"
+                    "m.video" -> "Video"
+                    "m.audio" -> "Audio"
                     else -> body ?: "[Unknown message type]"
                 }
             }
             "m.room.member" -> {
-                // Membership events (user joined, left, etc.)
                 val membership = content["membership"] as? String
                 when (membership) {
                     "join" -> "${getSenderDisplayName()} joined the room"
@@ -95,52 +94,47 @@ data class ClientEvent(
         return type == "m.room.message" && content["msgtype"] == "m.text"
     }
 
+    fun isVisibleEvent(): Boolean {
+        return when (type) {
+            "m.room.message" -> true
+            "m.room.member" -> true
+            "m.room.name" -> true
+            "m.room.topic" -> true
+            "m.room.avatar" -> true
+            "m.room.create" -> true
+            else -> false
+        }
+    }
+
     @OptIn(ExperimentalTime::class)
     fun getFormattedTime(): String {
-        // Step 1: Get current time as Instant
         val now = Clock.System.now()
-
-        // Step 2: Convert message timestamp to Instant
-        // originServerTs is in milliseconds, Instant.fromEpochMilliseconds expects milliseconds
         val messageInstant = Instant.fromEpochMilliseconds(originServerTs)
-
-        // Step 3: Calculate time difference
         val timeDiff = now - messageInstant
-
-        // Step 4: Get system timezone
         val timeZone = TimeZone.currentSystemDefault()
-
-        // Step 5: Convert to LocalDateTime for formatting
         val messageDateTime = messageInstant.toLocalDateTime(timeZone)
         val nowDateTime = now.toLocalDateTime(timeZone)
 
-        // Step 6: Format based on how old the message is
         return when {
-            // Less than 1 minute ago
             timeDiff < 1.minutes -> "Just now"
 
-            // Less than 1 hour ago
             timeDiff < 1.hours -> {
                 val mins = (timeDiff.inWholeMinutes).toInt()
                 "$mins min ago"
             }
 
-            // Same day (today)
             messageDateTime.date == nowDateTime.date -> {
                 formatTime(messageDateTime)
             }
 
-            // Yesterday
             messageDateTime.date == nowDateTime.date.minus(1, kotlinx.datetime.DateTimeUnit.DAY) -> {
                 "Yesterday ${formatTime(messageDateTime)}"
             }
 
-            // Within last 7 days (this week)
             timeDiff < 7.days -> {
                 "${getDayName(messageDateTime.dayOfWeek)} ${formatTime(messageDateTime)}"
             }
 
-            // Older than a week
             else -> {
                 formatDate(messageDateTime)
             }

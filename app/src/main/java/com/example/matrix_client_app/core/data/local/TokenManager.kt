@@ -3,6 +3,9 @@ package com.example.matrix_client_app.core.data.local
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Base64.NO_WRAP
+import android.util.Base64.decode
+import android.util.Base64.encodeToString
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -45,9 +48,6 @@ class TokenManager(private val context: Context) {
         createKeyIfNeeded()
     }
 
-    /**
-     * Creates a new encryption key in Android Keystore if it doesn't exist
-     */
     private fun createKeyIfNeeded() {
         if (!keyStore.containsAlias(KEYSTORE_ALIAS)) {
             val keyGenerator = KeyGenerator.getInstance(
@@ -72,16 +72,10 @@ class TokenManager(private val context: Context) {
         }
     }
 
-    /**
-     * Gets the encryption key from Keystore
-     */
     private fun getKey(): SecretKey {
         return keyStore.getKey(KEYSTORE_ALIAS, null) as SecretKey
     }
 
-    /**
-     * Encrypts data using AES-GCM
-     */
     private fun encrypt(plaintext: String): Pair<String, String> {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getKey())
@@ -90,30 +84,24 @@ class TokenManager(private val context: Context) {
         val encryptedBytes = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
 
         return Pair(
-            android.util.Base64.encodeToString(encryptedBytes, android.util.Base64.NO_WRAP),
-            android.util.Base64.encodeToString(iv, android.util.Base64.NO_WRAP)
+            encodeToString(encryptedBytes, NO_WRAP),
+            encodeToString(iv, NO_WRAP)
         )
     }
 
-    /**
-     * Decrypts data using AES-GCM
-     */
     private fun decrypt(encryptedData: String, ivString: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        val iv = android.util.Base64.decode(ivString, android.util.Base64.NO_WRAP)
+        val iv = decode(ivString, NO_WRAP)
         val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
 
         cipher.init(Cipher.DECRYPT_MODE, getKey(), spec)
 
-        val encryptedBytes = android.util.Base64.decode(encryptedData, android.util.Base64.NO_WRAP)
+        val encryptedBytes = decode(encryptedData, NO_WRAP)
         val decryptedBytes = cipher.doFinal(encryptedBytes)
 
         return String(decryptedBytes, Charsets.UTF_8)
     }
 
-    /**
-     * Saves the access token securely
-     */
     suspend fun saveAccessToken(token: String) {
         try {
             val (encryptedToken, iv) = encrypt(token)
@@ -128,9 +116,6 @@ class TokenManager(private val context: Context) {
         }
     }
 
-    /**
-     * Retrieves the access token
-     */
     suspend fun getAccessToken(): String? {
         return try {
             val preferences = context.dataStore.data.first()
@@ -148,9 +133,6 @@ class TokenManager(private val context: Context) {
         }
     }
 
-    /**
-     * Flow that emits the access token (useful for reactive UI)
-     */
     fun getAccessTokenFlow(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             try {
@@ -169,48 +151,30 @@ class TokenManager(private val context: Context) {
         }
     }
 
-    /**
-     * Saves the user ID (not encrypted as it's not sensitive)
-     */
     suspend fun saveUserId(userId: String) {
         context.dataStore.edit { preferences ->
             preferences[KEY_USER_ID] = userId
         }
     }
 
-    /**
-     * Gets the user ID
-     */
     suspend fun getUserId(): String? {
         return context.dataStore.data.first()[KEY_USER_ID]
     }
 
-    /**
-     * Saves the homeserver URL
-     */
     suspend fun saveHomeserverUrl(url: String) {
         context.dataStore.edit { preferences ->
             preferences[KEY_HOMESERVER_URL] = url
         }
     }
 
-    /**
-     * Gets the homeserver URL
-     */
     suspend fun getHomeserverUrl(): String? {
         return context.dataStore.data.first()[KEY_HOMESERVER_URL]
     }
 
-    /**
-     * Checks if user is logged in (has access token)
-     */
     suspend fun isLoggedIn(): Boolean {
         return getAccessToken() != null
     }
 
-    /**
-     * Clears all stored credentials (logout)
-     */
     suspend fun clearAll() {
         try {
             context.dataStore.edit { preferences ->
@@ -223,9 +187,6 @@ class TokenManager(private val context: Context) {
         }
     }
 
-    /**
-     * Clears only the access token (for token refresh scenarios)
-     */
     suspend fun clearAccessToken() {
         context.dataStore.edit { preferences ->
             preferences.remove(KEY_ACCESS_TOKEN)
