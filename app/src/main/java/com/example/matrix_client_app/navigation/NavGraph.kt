@@ -11,8 +11,8 @@ import com.example.matrix_client_app.feature.rooms.presentation.RoomListScreen
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object RoomList : Screen("room_list")
-    object MessageList : Screen("message_list/{roomId}") {
-        fun createRoute(roomId: String) = "message_list/$roomId"
+    object MessageList : Screen("message_list/{roomId}/{roomName}") {
+        fun createRoute(roomId: String, roomName: String) = "message_list/$roomId/$roomName"
     }
 }
 
@@ -31,13 +31,11 @@ fun NavGraph(
         }
 
         composable(Screen.RoomList.route) {
-            // RoomListScreen will be added here
             RoomListScreen(navController = navController)
         }
 
         composable(Screen.MessageList.route) { backStackEntry ->
-            // MessageListScreen will be added here
-             val roomId = backStackEntry.arguments?.getString("roomId")
+            val roomId = backStackEntry.arguments?.getString("roomId")
             MessageListScreen(navController = navController)
         }
     }

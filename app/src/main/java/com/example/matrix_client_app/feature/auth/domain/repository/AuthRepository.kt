@@ -1,6 +1,6 @@
 package com.example.matrix_client_app.feature.auth.domain.repository
 
-import com.example.matrix_client_app.util.Result
+import com.example.matrix_client_app.util.DataResult
 
 interface AuthRepository {
 
@@ -8,7 +8,7 @@ interface AuthRepository {
         homeserverUrl: String,
         username: String,
         password: String
-    ): Result
+    ): DataResult<Unit>
 
-    suspend fun logout(): Result
+    suspend fun logout(): DataResult<Unit>
 }

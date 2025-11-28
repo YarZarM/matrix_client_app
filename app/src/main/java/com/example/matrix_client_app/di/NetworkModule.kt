@@ -27,9 +27,9 @@ object NetworkModule {
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY  // Log everything
+                HttpLoggingInterceptor.Level.BODY
             } else {
-                HttpLoggingInterceptor.Level.NONE  // Log nothing in production
+                HttpLoggingInterceptor.Level.NONE
             }
         }
     }
@@ -52,8 +52,8 @@ object NetworkModule {
             .connectTimeout(Constants.NETWORK_TIMEOUT, TimeUnit.SECONDS)
             .readTimeout(Constants.NETWORK_TIMEOUT, TimeUnit.SECONDS)
             .writeTimeout(Constants.NETWORK_TIMEOUT, TimeUnit.SECONDS)
-            .addInterceptor(loggingInterceptor)  // First: log everything
-            .addInterceptor(authInterceptor)     // Second: add auth token
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor(authInterceptor)
             .build()
     }
 
@@ -61,7 +61,7 @@ object NetworkModule {
     @Singleton
     fun provideMoshi(): Moshi {
         return Moshi.Builder()
-            .add(KotlinJsonAdapterFactory())  // Kotlin support
+            .add(KotlinJsonAdapterFactory())
             .build()
     }
 
@@ -73,7 +73,7 @@ object NetworkModule {
         moshi: Moshi
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(Constants.DEFAULT_HOMESERVER)  // Placeholder base URL
+            .baseUrl(Constants.DEFAULT_HOMESERVER)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
