@@ -152,7 +152,7 @@ User opens app
         │
         ▼
 ┌───────────────────┐
-│ RoomListViewModel │ Checks authentication
+│ RoomViewModel     │ Checks authentication
 └────────┬──────────┘
          │ loadRooms()
          ▼
@@ -172,17 +172,155 @@ User opens app
                    │ PublicRoomsResponse
                    ▼
          ┌───────────────────┐
-         │ Filter events      │ isVisibleEvent()
-         │ (remove noise)     │
+         │ Filter events     │ isVisibleEvent()
+         │                   │
          └────────┬──────────┘
                   │ Visible events only
                   ▼
          ┌───────────────────┐
-         │ RoomListViewModel │ Updates UI state
+         │ RoomViewModel     │ Updates UI state
          └───────────────────┘
                   │
                   ▼
               Display rooms
+```
+
+### Message Viewing Flow
+
+```
+User clicks on room
+        │
+        ▼
+┌───────────────────┐
+│ RoomScreen        │ Navigates to MessageList
+└────────┬──────────┘
+         │ navigate(roomId)
+         ▼
+┌───────────────────┐
+│ MessageListScreen │ Opens with roomId
+└────────┬──────────┘
+         │ onStart
+         ▼
+┌───────────────────┐
+│MessageListViewModel│ Loads messages for room
+└────────┬──────────┘
+         │ loadMessages(roomId)
+         ▼
+┌───────────────────┐
+│MessagesRepository │ Prepares request
+└────────┬──────────┘
+         │ GET /rooms/{roomId}/messages
+         ├─────────────┐
+         │             │ Authorization: Bearer <token>
+         ▼             ▼
+┌───────────────────┐ ┌───────────────────┐
+│  TokenManager     │ │ MatrixApiService  │
+│ (Decrypt token)   │ │ (Make request)    │
+└────────┬──────────┘ └────────┬──────────┘
+         │                     │
+         └─────────┬───────────┘
+                   │ MessagesResponse
+                   ▼
+         ┌───────────────────┐
+         │ Filter events     │ isVisibleEvent()
+         │                   │
+         └────────┬──────────┘
+                  │ Messages only (no system events)
+                  ▼
+         ┌───────────────────┐
+         │ Format messages   │ getMessageBody()
+         │ (add timestamps)  │ getFormattedTime()
+         └────────┬──────────┘
+                  │ Formatted messages
+                  ▼
+         ┌───────────────────┐
+         │MessageListViewModel│ Updates UI state
+         └────────┬──────────┘
+                  │ _state.update { messages = ... }
+                  ▼
+         ┌───────────────────┐
+         │ MessageListScreen │ LazyColumn displays
+         └───────────────────┘
+                  │
+                  ▼
+              Display messages
+                  │
+                  │ User pulls to refresh
+                  ▼
+         ┌───────────────────┐
+         │MessageListViewModel│ refreshMessages()
+         └────────┬──────────┘
+                  │ Repeat flow
+                  ▼
+              Updated messages
+```
+
+### Join Room Flow
+
+```
+User clicks Join button
+        │
+        ▼
+┌───────────────────┐
+│ RoomScreen        │ User initiates join
+└────────┬──────────┘
+         │ onClick(Join)
+         ▼
+┌───────────────────┐
+│ RoomiewModel      │ Processes join event
+└────────┬──────────┘
+         │ onEvent(JoinRoom(roomId))
+         ▼
+┌───────────────────┐
+│ RoomsRepository   │ Coordinates join operation
+└────────┬──────────┘
+         │ POST /rooms/{roomId}/join
+         ├─────────────┐
+         │             │ Authorization: Bearer <token>
+         ▼             ▼
+┌───────────────────┐ ┌───────────────────┐
+│  TokenManager     │ │ MatrixApiService  │
+│ (Decrypt token)   │ │ (Make request)    │
+└────────┬──────────┘ └────────┬──────────┘
+         │                     │
+         └─────────┬───────────┘
+                   │ JoinResponse
+                   ▼
+         ┌───────────────────┐
+         │JoinedRoomsManager │ Persist joined room
+         └────────┬──────────┘
+                  │ saveJoinedRoom(roomId)
+                  ▼
+         ┌───────────────────┐
+         │    DataStore      │ Store in preferences
+         └────────┬──────────┘
+                  │
+                  ▼
+         ┌───────────────────┐
+         │ RoomsRepository   │ Result.Success(Unit)
+         └────────┬──────────┘
+                  │
+                  ▼
+         ┌───────────────────┐
+         │ RoomViewModel     │ Updates UI state
+         └────────┬──────────┘
+                  │ Add to joinedRoomIds
+                  ▼
+         ┌───────────────────┐
+         │ RoomScreen        │ Button shows "Joined ✓"
+         └───────────────────┘
+                  │
+                  ▼
+              Visual feedback
+                  │
+                  │ App restart
+                  ▼
+         ┌───────────────────┐
+         │JoinedRoomsManager │ Loads joined rooms
+         └────────┬──────────┘
+                  │ State persists ✅
+                  ▼
+              Joined state restored
 ```
 
 ### Error Handling Flow
